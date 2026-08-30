@@ -19,7 +19,8 @@ orders without opening your WordPress dashboard.
 
 * Instant Telegram notification when a new order comes in, with the order total, customer and items.
 * Change an order's status directly from Telegram, using the inline buttons on the notification.
-* A wp-admin dashboard skeleton showing what's available in WooPilot Pro.
+* A wp-admin dashboard with live order stats — notifications sent, status changes made via
+  the bot, and orders still pending action — plus a preview of what's available in WooPilot Pro.
 
 Full product, order and customer management, multi-admin access, analytics and more
 are part of WooPilot Pro. Pro features are visible in both Telegram and the dashboard,
@@ -27,8 +28,9 @@ clearly marked, but are never active in the free version.
 
 == Installation ==
 
-1. Upload the `woopilot` folder to `/wp-content/plugins/`, or install it through the
-   WordPress plugin screen directly.
+1. Download the latest `woopilot.zip` from the [Releases page](https://github.com/arefpik/woopilot-lite/releases),
+   then in wp-admin go to **Plugins > Add New > Upload Plugin** and upload it — or
+   unzip it and upload the `woopilot` folder to `/wp-content/plugins/` over (S)FTP.
 2. Activate the plugin. WooCommerce must already be installed and active.
 3. In wp-admin, go to **WooPilot > Settings**.
 4. Create a Telegram bot with [@BotFather](https://t.me/BotFather) and paste its token
