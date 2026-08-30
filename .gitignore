@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# WordPress local dev
+wp-cli.local.yml
+
+# Archives
+*.zip
+*.tar.gz
+
+# Test/cache artifacts
+.phpunit.result.cache
+.phpunit.cache/
