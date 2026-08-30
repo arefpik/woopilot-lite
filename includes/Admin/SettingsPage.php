@@ -52,12 +52,25 @@ class SettingsPage {
 		$botToken = isset( $_POST['woopilot_bot_token'] ) ? sanitize_text_field( wp_unslash( $_POST['woopilot_bot_token'] ) ) : '';
 		$chatId   = isset( $_POST['woopilot_chat_id'] ) ? sanitize_text_field( wp_unslash( $_POST['woopilot_chat_id'] ) ) : '';
 
+		if ( ! $this->isValidChatId( $chatId ) ) {
+			add_action( 'admin_notices', [ $this, 'renderInvalidChatIdNotice' ] );
+			return;
+		}
+
 		Config::setTelegramBotToken( $botToken );
 		Config::setTelegramChatId( $chatId );
 
 		$this->syncWebhook( $botToken );
 
 		add_action( 'admin_notices', [ $this, 'renderSavedNotice' ] );
+	}
+
+	/**
+	 * A Telegram chat id is either empty (not yet linked) or an integer
+	 * (negative for groups/channels), never arbitrary text.
+	 */
+	private function isValidChatId( string $chatId ): bool {
+		return '' === $chatId || 1 === preg_match( '/^-?\d+$/', $chatId );
 	}
 
 	/**
@@ -89,6 +102,12 @@ class SettingsPage {
 	public function renderSavedNotice(): void {
 		echo '<div class="notice notice-success"><p>' .
 			esc_html__( 'WooPilot settings saved.', 'woopilot' ) .
+			'</p></div>';
+	}
+
+	public function renderInvalidChatIdNotice(): void {
+		echo '<div class="notice notice-error"><p>' .
+			esc_html__( 'Chat ID must be a numeric Telegram chat identifier, or left empty.', 'woopilot' ) .
 			'</p></div>';
 	}
 
