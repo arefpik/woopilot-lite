@@ -37,6 +37,8 @@ class OrderService {
 			'number'   => $order->get_order_number(),
 			'total'    => $this->formatPlainTextTotal( $order ),
 			'customer' => trim( $order->get_formatted_billing_full_name() ),
+			'phone'    => $order->get_billing_phone(),
+			'email'    => $order->get_billing_email(),
 			'status'   => $order->get_status(),
 			'items'    => $this->formatItems( $order ),
 		];
@@ -82,7 +84,7 @@ class OrderService {
 	 * and decodes it down to plain text (e.g. "$200.00").
 	 */
 	private function formatPlainTextTotal( \WC_Order $order ): string {
-		return html_entity_decode( wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES );
+		return $this->stripHtmlToPlainText( $order->get_formatted_order_total() );
 	}
 
 	private function formatItems( \WC_Order $order ): array {
@@ -92,9 +94,40 @@ class OrderService {
 			$items[] = [
 				'name'     => $item->get_name(),
 				'quantity' => $item->get_quantity(),
+				'total'    => $this->stripHtmlToPlainText( wc_price( $item->get_total(), [ 'currency' => $order->get_currency() ] ) ),
+				'meta'     => $this->formatItemMeta( $item ),
 			];
 		}
 
 		return $items;
+	}
+
+	/**
+	 * Order items can carry arbitrary custom field data — variation
+	 * attributes, "Player ID" / account fields from a game top-up product,
+	 * anything a product-addons plugin attaches — with no fixed set of
+	 * keys known in advance. get_formatted_meta_data() is WooCommerce's own
+	 * generic, forward-compatible way to read whatever was captured at
+	 * checkout for this specific item, whatever product type added it.
+	 */
+	private function formatItemMeta( \WC_Order_Item $item ): array {
+		$meta = [];
+
+		foreach ( $item->get_formatted_meta_data() as $metaItem ) {
+			$meta[] = [
+				'label' => $this->stripHtmlToPlainText( $metaItem->display_key ),
+				'value' => $this->stripHtmlToPlainText( $metaItem->display_value ),
+			];
+		}
+
+		return $meta;
+	}
+
+	/**
+	 * WooCommerce price/meta helpers return HTML meant for wp-admin or the
+	 * storefront; this strips and decodes it down to plain text.
+	 */
+	private function stripHtmlToPlainText( string $html ): string {
+		return html_entity_decode( wp_strip_all_tags( $html ), ENT_QUOTES );
 	}
 }

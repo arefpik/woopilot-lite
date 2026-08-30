@@ -67,6 +67,8 @@ class NotificationDispatcher {
 		$tokens = [
 			'{order_number}' => (string) $order['number'],
 			'{customer}'     => (string) $order['customer'],
+			'{phone}'        => (string) $order['phone'],
+			'{email}'        => (string) $order['email'],
 			'{total}'        => (string) $order['total'],
 			'{status}'       => (string) $order['status'],
 			'{items}'        => $this->formatItemsList( $order['items'] ),
@@ -75,11 +77,22 @@ class NotificationDispatcher {
 		return strtr( $this->messageTemplate, $tokens );
 	}
 
+	/**
+	 * Each item's own custom fields (e.g. a game top-up product's account
+	 * id, or any other plugin-added checkout field) are listed right under
+	 * it, indented — there's no fixed set of these to expose as separate
+	 * placeholders, since a store can add new custom fields to any product
+	 * at any time.
+	 */
 	private function formatItemsList( array $items ): string {
 		$lines = [];
 
 		foreach ( $items as $item ) {
-			$lines[] = sprintf( '- %s x%d', $item['name'], $item['quantity'] );
+			$lines[] = sprintf( '- %s x%d — %s', $item['name'], $item['quantity'], $item['total'] );
+
+			foreach ( $item['meta'] as $meta ) {
+				$lines[] = sprintf( '  %s: %s', $meta['label'], $meta['value'] );
+			}
 		}
 
 		return implode( "\n", $lines );
