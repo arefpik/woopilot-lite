@@ -51,6 +51,20 @@ class TelegramChannel implements MessagingChannelInterface {
 	/**
 	 * {@inheritDoc}
 	 */
+	public function editMessageReplyMarkup( string $chatId, string $messageId, array $keyboard ): void {
+		$this->request(
+			'editMessageReplyMarkup',
+			[
+				'chat_id'      => $chatId,
+				'message_id'   => $messageId,
+				'reply_markup' => wp_json_encode( [ 'inline_keyboard' => $keyboard ] ),
+			]
+		);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	public function parseIncomingCommand( array $payload ): ParsedCommand {
 		if ( isset( $payload['callback_query'] ) ) {
 			return $this->parseCallbackQuery( $payload['callback_query'] );
@@ -111,13 +125,14 @@ class TelegramChannel implements MessagingChannelInterface {
 	 * @param array $callbackQuery Telegram callback_query object.
 	 */
 	private function parseCallbackQuery( array $callbackQuery ): ParsedCommand {
-		$chatId = (string) ( $callbackQuery['message']['chat']['id'] ?? '' );
-		$data   = trim( (string) ( $callbackQuery['data'] ?? '' ) );
-		$parts  = explode( ':', $data );
+		$chatId    = (string) ( $callbackQuery['message']['chat']['id'] ?? '' );
+		$data      = trim( (string) ( $callbackQuery['data'] ?? '' ) );
+		$parts     = explode( ':', $data );
+		$messageId = isset( $callbackQuery['message']['message_id'] ) ? (string) $callbackQuery['message']['message_id'] : null;
 
 		$command = (string) array_shift( $parts );
 
-		return new ParsedCommand( $chatId, $command, $parts, $callbackQuery );
+		return new ParsedCommand( $chatId, $command, $parts, $callbackQuery, $messageId );
 	}
 
 	/**

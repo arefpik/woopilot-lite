@@ -23,6 +23,20 @@ interface MessagingChannelInterface {
 	public function sendMessage( string $chatId, string $text, array $keyboard = [] ): void;
 
 	/**
+	 * Replaces the inline keyboard on an existing message, without touching
+	 * its text. Used to reflect a state change (e.g. an order's new status)
+	 * directly on the original message instead of sending a follow-up one —
+	 * important when multiple admins share the same chat/group, since a
+	 * pile of separate confirmation messages makes it hard to tell who
+	 * changed what last.
+	 *
+	 * @param string $chatId    Chat the message belongs to.
+	 * @param string $messageId Identifier of the message to edit.
+	 * @param array  $keyboard  New inline keyboard definition.
+	 */
+	public function editMessageReplyMarkup( string $chatId, string $messageId, array $keyboard ): void;
+
+	/**
 	 * Parses a raw incoming webhook payload into a normalized command.
 	 *
 	 * @param array $payload Raw payload received from the channel's webhook.
