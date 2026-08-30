@@ -8,6 +8,7 @@
 namespace WooPilot\Channels\Telegram;
 
 use WooPilot\Channels\ParsedCommand;
+use WooPilot\Core\Notifications\OrderStatusKeyboard;
 use WooPilot\Core\Orders\OrderRepository;
 use WooPilot\Core\Orders\OrderService;
 use WooPilot\Support\Config;
@@ -23,6 +24,13 @@ class TelegramWebhookController {
 	private const ROUTE_PATH           = '/telegram-webhook';
 	private const SECRET_HEADER        = 'x-telegram-bot-api-secret-token';
 	private const ORDER_STATUS_COMMAND = 'order_status';
+
+	/**
+	 * Commands that map to a Pro-only feature: Free shows them in the bot's
+	 * command list but only ever replies with an upsell message, never the
+	 * real feature.
+	 */
+	private const PRO_LOCKED_COMMANDS = [ 'products' ];
 
 	public function registerRoute(): void {
 		register_rest_route(
@@ -59,6 +67,10 @@ class TelegramWebhookController {
 			$command = $channel->parseIncomingCommand( $payload );
 
 			$this->routeCommand( $command, $channel );
+		} catch ( \InvalidArgumentException $e ) {
+			// Telegram sends update types we don't act on (e.g. my_chat_member
+			// when the bot is added to a group); that's routine, not an error.
+			Logger::info( 'Ignored an unsupported Telegram update type.' );
 		} catch ( \Throwable $e ) {
 			Logger::error( 'Failed to process an incoming Telegram webhook update.', [ 'exception' => $e->getMessage() ] );
 		}
@@ -72,6 +84,11 @@ class TelegramWebhookController {
 	 * commands are handled; anything else is silently ignored (not an error).
 	 */
 	private function routeCommand( ParsedCommand $command, TelegramChannel $channel ): void {
+		if ( in_array( $command->command, self::PRO_LOCKED_COMMANDS, true ) ) {
+			$this->sendProUpsell( $command->chatId, $channel );
+			return;
+		}
+
 		if ( self::ORDER_STATUS_COMMAND !== $command->command ) {
 			return;
 		}
@@ -86,12 +103,32 @@ class TelegramWebhookController {
 		$orderService = new OrderService( new OrderRepository() );
 		$changed      = $orderService->changeStatus( (int) $orderId, $status );
 
+		if ( ! $changed ) {
+			$channel->sendMessage( $command->chatId, __( 'Could not update the order status.', 'woopilot' ) );
+			return;
+		}
+
+		// Edit the original message's keyboard in place rather than sending a
+		// separate confirmation: with multiple admins in the same chat/group,
+		// a pile of "updated" messages makes it unclear who changed what
+		// last, while the keyboard always reflects the order's real state.
+		if ( null !== $command->messageId ) {
+			$channel->editMessageReplyMarkup(
+				$command->chatId,
+				$command->messageId,
+				OrderStatusKeyboard::build( Config::getStatusButtons(), (int) $orderId, $status )
+			);
+		}
+	}
+
+	/**
+	 * Replies with an upsell message instead of running the real (Pro-only)
+	 * feature. Free must never actually perform the Pro action.
+	 */
+	private function sendProUpsell( string $chatId, TelegramChannel $channel ): void {
 		$channel->sendMessage(
-			$command->chatId,
-			$changed
-				/* translators: 1: order id, 2: new order status */
-				? sprintf( __( 'Order #%1$d status updated to %2$s.', 'woopilot' ), (int) $orderId, $status )
-				: __( 'Could not update the order status.', 'woopilot' )
+			$chatId,
+			__( 'This feature is part of WooPilot Pro. Upgrade to unlock it.', 'woopilot' )
 		);
 	}
 
