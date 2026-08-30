@@ -67,9 +67,42 @@ function woopilot_init() {
 		add_action( 'admin_init', [ $settings_page, 'handleSave' ] );
 	}
 
-	// TODO: bootstrap remaining Core services (Orders, Notifications) here.
+	add_action(
+		'woocommerce_checkout_order_processed',
+		function ( $order_id ) {
+			$dispatcher = woopilot_build_notification_dispatcher();
+
+			if ( ! $dispatcher ) {
+				return;
+			}
+
+			$listener = new \WooPilot\Core\Notifications\NewOrderListener(
+				new \WooPilot\Core\Orders\OrderService( new \WooPilot\Core\Orders\OrderRepository() ),
+				$dispatcher
+			);
+
+			$listener->handle( (int) $order_id );
+		}
+	);
 }
 add_action( 'plugins_loaded', 'woopilot_init' );
+
+/**
+ * Builds a NotificationDispatcher wired to the configured Telegram bot, or
+ * null when the bot token / admin chat id haven't been set up yet.
+ */
+function woopilot_build_notification_dispatcher(): ?\WooPilot\Core\Notifications\NotificationDispatcher {
+	$bot_token = \WooPilot\Support\Config::getTelegramBotToken();
+	$chat_id   = \WooPilot\Support\Config::getTelegramChatId();
+
+	if ( empty( $bot_token ) || empty( $chat_id ) ) {
+		return null;
+	}
+
+	$channel = new \WooPilot\Channels\Telegram\TelegramChannel( $bot_token, \WooPilot\Support\Config::getTelegramWebhookSecret() );
+
+	return new \WooPilot\Core\Notifications\NotificationDispatcher( $channel, $chat_id );
+}
 
 /**
  * Shows an admin notice when WooCommerce is not active.
