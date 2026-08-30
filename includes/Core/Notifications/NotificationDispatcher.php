@@ -55,6 +55,13 @@ class NotificationDispatcher {
 			$this->renderTemplate( $order ),
 			OrderStatusKeyboard::build( $this->statusButtons, $order['id'], $order['status'] )
 		);
+
+		/**
+		 * Fires after WooPilot has sent a new-order notification.
+		 *
+		 * @param int $orderId The order ID.
+		 */
+		do_action( 'woopilot_new_order_notified', $order['id'] );
 	}
 
 	/**

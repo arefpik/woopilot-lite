@@ -59,6 +59,21 @@ function woopilot_init() {
 		function () {
 			( new \WooPilot\Channels\Telegram\TelegramWebhookController() )->registerRoute();
 			( new \WooPilot\Admin\Rest\PingController() )->registerRoute();
+			( new \WooPilot\Admin\Rest\StatsController( new \WooPilot\Core\Stats\StatsService() ) )->registerRoute();
+		}
+	);
+
+	add_action(
+		'woopilot_new_order_notified',
+		function ( $order_id ) {
+			( new \WooPilot\Core\Stats\StatsService() )->markNotified( (int) $order_id );
+		}
+	);
+
+	add_action(
+		'woopilot_order_status_changed',
+		function ( $order_id ) {
+			( new \WooPilot\Core\Stats\StatsService() )->markStatusChangedViaBot( (int) $order_id );
 		}
 	);
 
