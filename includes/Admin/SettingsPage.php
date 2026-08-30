@@ -33,9 +33,11 @@ class SettingsPage {
 	private const TEMPLATE_PLACEHOLDERS = [
 		'{order_number}' => 'Order number',
 		'{customer}'     => 'Customer name',
+		'{phone}'        => 'Customer phone number',
+		'{email}'        => 'Customer email address',
 		'{total}'        => 'Order total',
 		'{status}'       => 'Order status',
-		'{items}'        => 'Ordered items, one per line',
+		'{items}'        => 'Ordered items, one per line, each with its price and any custom fields the product added at checkout (e.g. a game top-up account ID) — no separate placeholder needed for those, they show automatically',
 	];
 
 	public function registerMenu(): void {
@@ -253,9 +255,16 @@ class SettingsPage {
 					class="large-text code"
 				><?php echo esc_textarea( $template ); ?></textarea>
 				<p class="description">
-					<?php esc_html_e( 'Available placeholders:', 'woopilot' ); ?>
+					<?php esc_html_e( 'Click a placeholder to insert it at the cursor:', 'woopilot' ); ?>
+				</p>
+				<p>
 					<?php foreach ( self::TEMPLATE_PLACEHOLDERS as $placeholder => $description ) : ?>
-						<code title="<?php echo esc_attr( $description ); ?>"><?php echo esc_html( $placeholder ); ?></code>
+						<button
+							type="button"
+							class="button woopilot-insert-placeholder"
+							data-placeholder="<?php echo esc_attr( $placeholder ); ?>"
+							title="<?php echo esc_attr( $description ); ?>"
+						><?php echo esc_html( $placeholder ); ?></button>
 					<?php endforeach; ?>
 				</p>
 			</td>
@@ -315,9 +324,10 @@ class SettingsPage {
 	}
 
 	/**
-	 * Plain vanilla JS (no build step) for the add/remove button repeater —
-	 * this is a classic wp-admin screen, not part of dashboard-app/, so the
-	 * Tailwind-only rule doesn't apply here.
+	 * Plain vanilla JS (no build step) for the status-button repeater and
+	 * the template placeholder inserter — this is a classic wp-admin
+	 * screen, not part of dashboard-app/, so the Tailwind-only rule
+	 * doesn't apply here.
 	 */
 	private function renderRepeaterScript(): void {
 		?>
@@ -335,6 +345,23 @@ class SettingsPage {
 				if ( event.target.classList.contains( 'woopilot-remove-status-button' ) ) {
 					event.target.closest( '.woopilot-status-button-row' ).remove();
 				}
+			} );
+
+			// Inserts the clicked placeholder at the textarea's current
+			// cursor position (or replaces the current selection), instead
+			// of always appending to the end.
+			var templateField = document.getElementById( 'woopilot_notification_template' );
+
+			document.querySelectorAll( '.woopilot-insert-placeholder' ).forEach( function ( button ) {
+				button.addEventListener( 'click', function () {
+					templateField.focus();
+					templateField.setRangeText(
+						button.dataset.placeholder,
+						templateField.selectionStart,
+						templateField.selectionEnd,
+						'end'
+					);
+				} );
 			} );
 		} )();
 		</script>
