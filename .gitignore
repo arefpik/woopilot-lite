@@ -31,3 +31,7 @@ wp-cli.local.yml
 # Test/cache artifacts
 .phpunit.result.cache
 .phpunit.cache/
+
+# AI assistant instructions (internal, not for the public repo)
+CLAUDE.md
+ai-rules/
