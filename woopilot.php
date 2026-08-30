@@ -58,10 +58,15 @@ function woopilot_init() {
 		'rest_api_init',
 		function () {
 			( new \WooPilot\Channels\Telegram\TelegramWebhookController() )->registerRoute();
+			( new \WooPilot\Admin\Rest\PingController() )->registerRoute();
 		}
 	);
 
 	if ( is_admin() ) {
+		$dashboard_page = new \WooPilot\Admin\Dashboard\DashboardPage();
+		add_action( 'admin_menu', [ $dashboard_page, 'registerMenu' ] );
+		add_action( 'admin_enqueue_scripts', [ $dashboard_page, 'enqueueAssets' ] );
+
 		$settings_page = new \WooPilot\Admin\SettingsPage();
 		add_action( 'admin_menu', [ $settings_page, 'registerMenu' ] );
 		add_action( 'admin_init', [ $settings_page, 'handleSave' ] );
