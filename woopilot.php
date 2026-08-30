@@ -72,25 +72,34 @@ function woopilot_init() {
 		add_action( 'admin_init', [ $settings_page, 'handleSave' ] );
 	}
 
-	add_action(
-		'woocommerce_checkout_order_processed',
-		function ( $order_id ) {
-			$dispatcher = woopilot_build_notification_dispatcher();
-
-			if ( ! $dispatcher ) {
-				return;
-			}
-
-			$listener = new \WooPilot\Core\Notifications\NewOrderListener(
-				new \WooPilot\Core\Orders\OrderService( new \WooPilot\Core\Orders\OrderRepository() ),
-				$dispatcher
-			);
-
-			$listener->handle( (int) $order_id );
-		}
-	);
+	// Classic (shortcode) checkout passes an order id; the Blocks/Store API
+	// checkout — the default since WooCommerce 8+ — passes the WC_Order
+	// object instead, via a different hook. Both must be covered, or stores
+	// using the modern checkout never get a notification.
+	add_action( 'woocommerce_checkout_order_processed', 'woopilot_handle_new_order' );
+	add_action( 'woocommerce_store_api_checkout_order_processed', 'woopilot_handle_new_order' );
 }
 add_action( 'plugins_loaded', 'woopilot_init' );
+
+/**
+ * @param int|\WC_Order $order_id_or_order
+ */
+function woopilot_handle_new_order( $order_id_or_order ) {
+	$order_id = $order_id_or_order instanceof \WC_Order ? $order_id_or_order->get_id() : (int) $order_id_or_order;
+
+	$dispatcher = woopilot_build_notification_dispatcher();
+
+	if ( ! $dispatcher ) {
+		return;
+	}
+
+	$listener = new \WooPilot\Core\Notifications\NewOrderListener(
+		new \WooPilot\Core\Orders\OrderService( new \WooPilot\Core\Orders\OrderRepository() ),
+		$dispatcher
+	);
+
+	$listener->handle( $order_id );
+}
 
 /**
  * Builds a NotificationDispatcher wired to the configured Telegram bot, or
