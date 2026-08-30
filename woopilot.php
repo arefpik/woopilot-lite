@@ -54,7 +54,20 @@ function woopilot_init() {
 		return;
 	}
 
-	// TODO: bootstrap Core services and the active messaging channel here.
+	add_action(
+		'rest_api_init',
+		function () {
+			( new \WooPilot\Channels\Telegram\TelegramWebhookController() )->registerRoute();
+		}
+	);
+
+	if ( is_admin() ) {
+		$settings_page = new \WooPilot\Admin\SettingsPage();
+		add_action( 'admin_menu', [ $settings_page, 'registerMenu' ] );
+		add_action( 'admin_init', [ $settings_page, 'handleSave' ] );
+	}
+
+	// TODO: bootstrap remaining Core services (Orders, Notifications) here.
 }
 add_action( 'plugins_loaded', 'woopilot_init' );
 
