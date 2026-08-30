@@ -35,7 +35,7 @@ class OrderService {
 		return [
 			'id'       => $order->get_id(),
 			'number'   => $order->get_order_number(),
-			'total'    => $order->get_formatted_order_total(),
+			'total'    => $this->formatPlainTextTotal( $order ),
 			'customer' => trim( $order->get_formatted_billing_full_name() ),
 			'status'   => $order->get_status(),
 			'items'    => $this->formatItems( $order ),
@@ -74,6 +74,15 @@ class OrderService {
 
 	private function isValidStatus( string $status ): bool {
 		return array_key_exists( 'wc-' . $status, wc_get_order_statuses() );
+	}
+
+	/**
+	 * get_formatted_order_total() returns HTML meant for wp-admin, which
+	 * would leak raw markup into a plain-text Telegram message; this strips
+	 * and decodes it down to plain text (e.g. "$200.00").
+	 */
+	private function formatPlainTextTotal( \WC_Order $order ): string {
+		return html_entity_decode( wp_strip_all_tags( $order->get_formatted_order_total() ), ENT_QUOTES );
 	}
 
 	private function formatItems( \WC_Order $order ): array {
