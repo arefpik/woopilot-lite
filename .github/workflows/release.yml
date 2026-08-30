@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: dashboard-app/package-lock.json
+
+      - name: Build dashboard-app
+        working-directory: dashboard-app
+        run: |
+          npm ci
+          npm run build
+
+      - name: Assemble plugin folder
+        run: |
+          mkdir -p build/woopilot
+          cp woopilot.php readme.txt build/woopilot/
+          cp -r includes build/woopilot/includes
+          mkdir -p build/woopilot/dashboard-app
+          cp -r dashboard-app/build build/woopilot/dashboard-app/build
+
+      - name: Create ZIP
+        working-directory: build
+        run: zip -r ../woopilot.zip woopilot
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: woopilot.zip
+          generate_release_notes: true
