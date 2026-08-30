@@ -7,6 +7,9 @@
 
 namespace WooPilot\Channels\Telegram;
 
+use WooPilot\Channels\ParsedCommand;
+use WooPilot\Core\Orders\OrderRepository;
+use WooPilot\Core\Orders\OrderService;
 use WooPilot\Support\Config;
 use WooPilot\Support\Logger;
 
@@ -16,9 +19,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class TelegramWebhookController {
 
-	private const ROUTE_NAMESPACE = 'woopilot/v1';
-	private const ROUTE_PATH      = '/telegram-webhook';
-	private const SECRET_HEADER   = 'x-telegram-bot-api-secret-token';
+	private const ROUTE_NAMESPACE      = 'woopilot/v1';
+	private const ROUTE_PATH           = '/telegram-webhook';
+	private const SECRET_HEADER        = 'x-telegram-bot-api-secret-token';
+	private const ORDER_STATUS_COMMAND = 'order_status';
 
 	public function registerRoute(): void {
 		register_rest_route(
@@ -54,14 +58,41 @@ class TelegramWebhookController {
 			$channel = new TelegramChannel( Config::getTelegramBotToken(), Config::getTelegramWebhookSecret() );
 			$command = $channel->parseIncomingCommand( $payload );
 
-			// TODO: dispatch $command to the relevant Core service (Orders, etc.) once that layer exists.
-			unset( $command );
+			$this->routeCommand( $command, $channel );
 		} catch ( \Throwable $e ) {
 			Logger::error( 'Failed to process an incoming Telegram webhook update.', [ 'exception' => $e->getMessage() ] );
 		}
 
 		// Telegram only cares about a 2xx response; errors are logged, not surfaced here.
 		return new \WP_REST_Response( null, 200 );
+	}
+
+	/**
+	 * Routes a parsed command to the matching Core service. Only known
+	 * commands are handled; anything else is silently ignored (not an error).
+	 */
+	private function routeCommand( ParsedCommand $command, TelegramChannel $channel ): void {
+		if ( self::ORDER_STATUS_COMMAND !== $command->command ) {
+			return;
+		}
+
+		[ $orderId, $status ] = $command->args + [ null, null ];
+
+		if ( null === $orderId || null === $status ) {
+			return;
+		}
+
+		$status       = sanitize_key( $status );
+		$orderService = new OrderService( new OrderRepository() );
+		$changed      = $orderService->changeStatus( (int) $orderId, $status );
+
+		$channel->sendMessage(
+			$command->chatId,
+			$changed
+				/* translators: 1: order id, 2: new order status */
+				? sprintf( __( 'Order #%1$d status updated to %2$s.', 'woopilot' ), (int) $orderId, $status )
+				: __( 'Could not update the order status.', 'woopilot' )
+		);
 	}
 
 	public static function getWebhookUrl(): string {
