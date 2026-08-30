@@ -106,7 +106,12 @@ function woopilot_build_notification_dispatcher(): ?\WooPilot\Core\Notifications
 
 	$channel = new \WooPilot\Channels\Telegram\TelegramChannel( $bot_token, \WooPilot\Support\Config::getTelegramWebhookSecret() );
 
-	return new \WooPilot\Core\Notifications\NotificationDispatcher( $channel, $chat_id );
+	return new \WooPilot\Core\Notifications\NotificationDispatcher(
+		$channel,
+		$chat_id,
+		\WooPilot\Support\Config::getNotificationTemplate(),
+		\WooPilot\Support\Config::getStatusButtons()
+	);
 }
 
 /**

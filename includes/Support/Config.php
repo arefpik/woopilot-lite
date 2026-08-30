@@ -13,11 +13,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Config {
 
-	private const OPTION_BOT_TOKEN      = 'woopilot_telegram_bot_token';
-	private const OPTION_CHAT_ID        = 'woopilot_telegram_chat_id';
-	private const OPTION_WEBHOOK_SECRET = 'woopilot_telegram_webhook_secret';
+	private const OPTION_BOT_TOKEN              = 'woopilot_telegram_bot_token';
+	private const OPTION_CHAT_ID                = 'woopilot_telegram_chat_id';
+	private const OPTION_WEBHOOK_SECRET         = 'woopilot_telegram_webhook_secret';
+	private const OPTION_NOTIFICATION_TEMPLATE  = 'woopilot_notification_template';
+	private const OPTION_STATUS_BUTTONS         = 'woopilot_status_buttons';
 
 	private const WEBHOOK_SECRET_LENGTH = 32;
+
+	private const DEFAULT_NOTIFICATION_TEMPLATE = "New order #{order_number}\nCustomer: {customer}\nTotal: {total}\n{items}";
 
 	public static function getTelegramBotToken(): string {
 		return (string) get_option( self::OPTION_BOT_TOKEN, '' );
@@ -48,5 +52,53 @@ class Config {
 		}
 
 		return (string) $secret;
+	}
+
+	/**
+	 * The message sent for a new order, with {order_number}/{customer}/
+	 * {total}/{status}/{items} placeholders. Falls back to a sensible
+	 * default so the feature keeps working even before an admin visits
+	 * Settings.
+	 */
+	public static function getNotificationTemplate(): string {
+		$template = get_option( self::OPTION_NOTIFICATION_TEMPLATE, '' );
+
+		return '' !== $template ? (string) $template : self::DEFAULT_NOTIFICATION_TEMPLATE;
+	}
+
+	public static function setNotificationTemplate( string $template ): void {
+		update_option( self::OPTION_NOTIFICATION_TEMPLATE, $template );
+	}
+
+	public static function getDefaultNotificationTemplate(): string {
+		return self::DEFAULT_NOTIFICATION_TEMPLATE;
+	}
+
+	/**
+	 * Admin-defined inline buttons shown under a new-order notification,
+	 * each mapping a button label to a WooCommerce order status. Stored as
+	 * a list of ['label' => string, 'status' => string].
+	 */
+	public static function getStatusButtons(): array {
+		$buttons = get_option( self::OPTION_STATUS_BUTTONS, null );
+
+		return is_array( $buttons ) ? $buttons : self::getDefaultStatusButtons();
+	}
+
+	public static function setStatusButtons( array $buttons ): void {
+		update_option( self::OPTION_STATUS_BUTTONS, $buttons );
+	}
+
+	public static function getDefaultStatusButtons(): array {
+		return [
+			[
+				'label'  => 'Mark as Processing',
+				'status' => 'processing',
+			],
+			[
+				'label'  => 'Mark as Completed',
+				'status' => 'completed',
+			],
+		];
 	}
 }

@@ -22,9 +22,22 @@ class NotificationDispatcher {
 
 	private string $chatId;
 
-	public function __construct( MessagingChannelInterface $channel, string $chatId ) {
-		$this->channel = $channel;
-		$this->chatId  = $chatId;
+	private string $messageTemplate;
+
+	/** @var array Admin-defined list of ['label' => string, 'status' => string]. */
+	private array $statusButtons;
+
+	/**
+	 * @param string $messageTemplate Message text with {order_number}/{customer}/
+	 *                                {total}/{status}/{items} placeholders.
+	 * @param array  $statusButtons   List of ['label' => string, 'status' => string]
+	 *                                shown as inline buttons under the message.
+	 */
+	public function __construct( MessagingChannelInterface $channel, string $chatId, string $messageTemplate, array $statusButtons ) {
+		$this->channel         = $channel;
+		$this->chatId          = $chatId;
+		$this->messageTemplate = $messageTemplate;
+		$this->statusButtons   = $statusButtons;
 	}
 
 	/**
@@ -39,29 +52,36 @@ class NotificationDispatcher {
 
 		$this->channel->sendMessage(
 			$this->chatId,
-			$this->formatNewOrderMessage( $order ),
-			$this->buildStatusKeyboard( $order['id'] )
+			$this->renderTemplate( $order ),
+			OrderStatusKeyboard::build( $this->statusButtons, $order['id'], $order['status'] )
 		);
 	}
 
-	private function formatNewOrderMessage( array $order ): string {
-		$lines = [
-			sprintf( 'New order #%s', $order['number'] ),
-			sprintf( 'Customer: %s', $order['customer'] ),
-			sprintf( 'Total: %s', $order['total'] ),
+	/**
+	 * Substitutes order placeholders into the admin-configured template.
+	 * Uses strtr() (simultaneous replacement) instead of chained str_replace()
+	 * calls so a value that happens to contain "{...}" text can never be
+	 * mistaken for another placeholder.
+	 */
+	private function renderTemplate( array $order ): string {
+		$tokens = [
+			'{order_number}' => (string) $order['number'],
+			'{customer}'     => (string) $order['customer'],
+			'{total}'        => (string) $order['total'],
+			'{status}'       => (string) $order['status'],
+			'{items}'        => $this->formatItemsList( $order['items'] ),
 		];
 
-		foreach ( $order['items'] as $item ) {
+		return strtr( $this->messageTemplate, $tokens );
+	}
+
+	private function formatItemsList( array $items ): string {
+		$lines = [];
+
+		foreach ( $items as $item ) {
 			$lines[] = sprintf( '- %s x%d', $item['name'], $item['quantity'] );
 		}
 
 		return implode( "\n", $lines );
-	}
-
-	private function buildStatusKeyboard( int $orderId ): array {
-		return [
-			[ [ 'text' => 'Mark as Processing', 'callback_data' => "order_status:{$orderId}:processing" ] ],
-			[ [ 'text' => 'Mark as Completed', 'callback_data' => "order_status:{$orderId}:completed" ] ],
-		];
 	}
 }
