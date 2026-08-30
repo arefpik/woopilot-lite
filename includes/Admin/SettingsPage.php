@@ -188,6 +188,7 @@ class SettingsPage {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'WooPilot Settings', 'woopilot' ); ?></h1>
+			<?php $this->renderGettingStartedNotice(); ?>
 			<form method="post">
 				<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD ); ?>
 				<table class="form-table">
@@ -199,6 +200,43 @@ class SettingsPage {
 			</form>
 		</div>
 		<?php $this->renderRepeaterScript(); ?>
+		<?php
+	}
+
+	/**
+	 * Shown only while no bot token is saved yet, so a first-time admin
+	 * knows exactly what to do before the connection fields mean anything.
+	 * Disappears automatically once a token is on file.
+	 */
+	private function renderGettingStartedNotice(): void {
+		if ( '' !== Config::getTelegramBotToken() ) {
+			return;
+		}
+		?>
+		<div class="notice notice-info" style="padding: 12px 16px;">
+			<p><strong><?php esc_html_e( 'Get WooPilot connected to Telegram in three steps:', 'woopilot' ); ?></strong></p>
+			<ol style="margin-left: 1.2em; list-style: decimal;">
+				<li>
+					<?php
+					printf(
+						/* translators: %s: link to @BotFather on Telegram */
+						esc_html__( 'Open a chat with %s, send /newbot, and follow its prompts to get a bot token.', 'woopilot' ),
+						'<a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a>'
+					);
+					?>
+				</li>
+				<li>
+					<?php
+					printf(
+						/* translators: %s: link to @userinfobot on Telegram */
+						esc_html__( 'Message your new bot at least once, then get your numeric Chat ID from %s (add it to a group first if you want order notifications sent there instead).', 'woopilot' ),
+						'<a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer">@userinfobot</a>'
+					);
+					?>
+				</li>
+				<li><?php esc_html_e( 'Paste both values below and click Save Settings — WooPilot configures the Telegram webhook automatically, no manual setup needed.', 'woopilot' ); ?></li>
+			</ol>
+		</div>
 		<?php
 	}
 
